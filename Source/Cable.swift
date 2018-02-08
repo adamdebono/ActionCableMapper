@@ -8,8 +8,10 @@ public class Cable: WebSocketDelegate {
         return self.socket.currentURL
     }
 
-    public init(url: URL) {
+    public init(url: URL, reconnectionStrategy: RetryStrategy = .default) {
         self.socket = WebSocket(url: url)
+        self.reconnectionStrategy = reconnectionStrategy
+
         self.socket.respondToPingWithPong = false
         self.socket.delegate = self
     }
@@ -19,13 +21,33 @@ public class Cable: WebSocketDelegate {
     public var isConnected: Bool {
         return self.socket.isConnected
     }
+    private var manuallyDisconnected: Bool = false
+
+    public let reconnectionStrategy: RetryStrategy
+    private var retryHandler: RetryHandler?
 
     public func connect() {
+        self.retryHandler = nil
         self.socket.connect()
     }
 
     public func disconnect() {
+        self.manuallyDisconnected = true
         self.socket.disconnect()
+    }
+
+    private func reconnect() {
+        let retryHandler: RetryHandler
+        if let handler = self.retryHandler {
+            retryHandler = handler
+        } else {
+            retryHandler = RetryHandler(strategy: self.reconnectionStrategy)
+            self.retryHandler = retryHandler
+        }
+
+        retryHandler.retry {
+            self.socket.connect()
+        }
     }
 
     // MARK: - Channel Subscription
@@ -50,15 +72,6 @@ public class Cable: WebSocketDelegate {
         self.pendingChannels.append(channel)
     }
 
-    private func subscribeWaitingChannels() {
-        let channels = self.waitingChannels
-        self.waitingChannels.removeAll()
-
-        channels.forEach { (channel) in
-            self.subscribe(to: channel)
-        }
-    }
-
     internal func unsubscribe(from channel: Channel) {
         guard let index = self.subscribedChannels.index(where: { channel == $0 }) else { return }
 
@@ -68,7 +81,29 @@ public class Cable: WebSocketDelegate {
         self.subscribedChannels.remove(at: index)
     }
 
+
+    private func subscribeWaitingChannels() {
+        let channels = self.waitingChannels
+        self.waitingChannels.removeAll()
+
+        channels.forEach { (channel) in
+            self.subscribe(to: channel)
+        }
+    }
+
+    private func disconnectSubscribedChannels() {
+        let subscribedChannels = self.subscribedChannels
+        self.subscribedChannels.removeAll()
+        self.waitingChannels.append(contentsOf: subscribedChannels)
+
+        subscribedChannels.forEach { (channel) in
+            channel.cableDisconnected()
+        }
+    }
+
     // MARK: - Sending Data
+
+    private var waitingActions: [Action] = []
 
     internal func transmit(_ action: Action) throws {
         guard self.isConnected else { throw TransmitError.notConnected }
@@ -78,16 +113,60 @@ public class Cable: WebSocketDelegate {
         self.socket.write(string: payload)
     }
 
+    internal func transmitWhenConnected(_ action: Action) {
+        if self.isConnected && action.isReadyToSend {
+            try? self.transmit(action)
+        } else {
+            self.waitingActions.append(action)
+        }
+    }
+
+    private func transmitWaitingActions() {
+        guard self.isConnected else { return }
+
+        var i = 0
+        while i < self.waitingActions.count {
+            let action = self.waitingActions[i]
+            if action.isReadyToSend {
+                self.waitingActions.remove(at: i)
+                try? self.transmit(action)
+            } else {
+                i += 1
+            }
+        }
+    }
+
     // MARK: - Web Socket Delegate
 
     public func websocketDidConnect(socket: WebSocketClient) {
+        self.manuallyDisconnected = false
+        self.retryHandler = nil
+
         self.subscribeWaitingChannels()
-        print("socket connected")
+        self.transmitWaitingActions()
     }
 
     public func websocketDidDisconnect(socket: WebSocketClient, error: Error?) {
-        print("socket disconnected")
-        print(error)
+        self.disconnectSubscribedChannels()
+
+        var attemptReconnect = true
+
+        if let e = error, let error = e as? WSError {
+            switch error.code {
+            case 2, 404, 1000, 1002, 1003, 1007, 1008, 1009, 9847:
+                // unknown domain, not found, closed, protocol violation x5, ssl handshake
+                attemptReconnect = false
+            case 61, 1005:
+                // refused, unknown
+                break
+            default:
+                break
+            }
+        }
+
+        if attemptReconnect && !self.manuallyDisconnected {
+            self.reconnect()
+        }
     }
 
     public func websocketDidReceiveMessage(socket: WebSocketClient, text: String) {
@@ -111,6 +190,8 @@ public class Cable: WebSocketDelegate {
             self.subscribedChannels.append(channel)
 
             channel.subscriptionConfirmed(on: self)
+
+            self.transmitWaitingActions()
         case .hibernateSubscription:
             break
         case .message:

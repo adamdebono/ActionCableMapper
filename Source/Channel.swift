@@ -18,7 +18,8 @@ public protocol Channel: AnyObject {
 extension Channel {
 
     var isConnected: Bool {
-        return self.cable != nil
+        guard let cable = self.cable else { return false }
+        return cable.isConnected
     }
 
     var identifierPayload: String {
@@ -30,32 +31,47 @@ extension Channel {
     // MARK: - Subscribing
 
     public func subscribe(on cable: Cable) {
+        self.cable = cable
         cable.subscribe(to: self)
     }
 
     public func unsubscribe() {
         guard let cable = self.cable else { return }
         cable.unsubscribe(from: self)
+
+        self.cable = nil
     }
 
     // MARK: - Receiving
 
     // MARK: - Sending
 
-    public func perform() {
+    public func perform(action: String, data: [String: Any] = [:]) throws {
+        guard let cable = self.cable else { return }
 
+        let action = try MessageAction(channel: self, action: action, data: data)
+        try cable.transmit(action)
+    }
+
+    public func performWhenConnected(action: String, data: [String: Any]) throws {
+        guard let cable = self.cable else { return }
+
+        let action = try MessageAction(channel: self, action: action, data: data)
+        cable.transmitWhenConnected(action)
     }
 
     // MARK: - Callbacks
 
     internal func subscriptionConfirmed(on cable: Cable) {
-        self.cable = cable
-
         self.didConnect()
     }
 
     internal func subscriptionRejected(on cable: Cable) {
         self.wasRejected()
+    }
+
+    internal func cableDisconnected() {
+        self.didDisconnect()
     }
 }
 
