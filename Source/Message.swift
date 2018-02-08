@@ -17,13 +17,19 @@ public protocol Message: Codable {
 // MARK: - Helper Functions
 
 internal func decodeMessage(_ text: String) throws -> Message {
+    let decoder = JSONDecoder()
+
     let data = text.data(using: .utf8)!
     guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else { throw CodingError.invalidType }
 
+    if let command = json["message"] as? [String: Any] {
+        var message = try decoder.decode(MessageMessage.self, from: data)
+        message.message = command
+        return message
+    }
+
     guard let typeString = json["type"] as? String else { throw CodingError.missingData }
     guard let type = MessageType(rawValue: typeString) else { throw CodingError.invalidType }
-
-    let decoder = JSONDecoder()
 
     switch type {
     case .cancelSubscription:
@@ -35,7 +41,7 @@ internal func decodeMessage(_ text: String) throws -> Message {
     case .hibernateSubscription:
         fatalError()
     case .message:
-        fatalError()
+        return try decoder.decode(MessageMessage.self, from: data)
     case .ping:
         return try decoder.decode(PingMessage.self, from: data)
     case .rejectSubscription:
@@ -87,6 +93,38 @@ public struct ConfirmSubscriptionMessage: Message {
 
         try container.encode(self.kind, forKey: .type)
         try container.encode(self.originalIdentifier, forKey: .identifier)
+    }
+}
+
+public struct MessageMessage: Message {
+    private enum CodingKeys: String, CodingKey {
+        case type = "type"
+        case identifier = "identifier"
+        case message = "message"
+    }
+
+    public let kind: MessageType = .message
+    private let originalIdentifier: Channel.Identifier
+    public fileprivate(set) var message: [String: Any]
+
+    public let channelName: String
+    public let channelIdentifier: Channel.Identifier?
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        let ident = try decodeIdentifier(in: container, with: .identifier)
+
+        self.originalIdentifier = ident.original
+        self.channelName = ident.channelName
+        self.channelIdentifier = ident.channelIdentifier
+
+        self.message = [:]
+    }
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(self.kind, forKey: .type)
     }
 }
 

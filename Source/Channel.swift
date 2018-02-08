@@ -12,7 +12,7 @@ public protocol Channel: AnyObject {
     func didDisconnect()
     func wasRejected()
 
-    func didReceive()
+    func didReceive(message: [String: Any])
 }
 
 extension Channel {
@@ -72,6 +72,10 @@ extension Channel {
 
     internal func cableDisconnected() {
         self.didDisconnect()
+    }
+
+    internal func received(message: MessageMessage) {
+        self.didReceive(message: message.message)
     }
 }
 

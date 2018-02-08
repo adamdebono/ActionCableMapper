@@ -195,7 +195,9 @@ public class Cable: WebSocketDelegate {
         case .hibernateSubscription:
             break
         case .message:
-            break
+            guard let message = message as? MessageMessage else { return }
+            guard let channel = self.subscribedChannels.first(where: { $0 == (message.channelName, message.channelIdentifier) }) else { return }
+            channel.received(message: message)
         case .rejectSubscription:
             guard let message = message as? RejectSubscriptionMessage else { return }
             guard let index = self.pendingChannels.index(where: { $0 == (message.channelName, message.channelIdentifier) }) else { return }
