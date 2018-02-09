@@ -8,8 +8,13 @@ public class Cable: WebSocketDelegate {
         return self.socket.currentURL
     }
 
-    public init(url: URL, reconnectionStrategy: RetryStrategy = .default) {
-        self.socket = WebSocket(url: url)
+    public convenience init(url: URL, reconnectionStrategy: RetryStrategy = .default) {
+        let request = URLRequest(url: url)
+        self.init(request: request, reconnectionStrategy: reconnectionStrategy)
+    }
+
+    public init(request: URLRequest, reconnectionStrategy: RetryStrategy = .default) {
+        self.socket = WebSocket(request: request)
         self.reconnectionStrategy = reconnectionStrategy
 
         self.socket.respondToPingWithPong = false
@@ -22,9 +27,15 @@ public class Cable: WebSocketDelegate {
         return self.socket.isConnected
     }
     private var manuallyDisconnected: Bool = false
+    private var shouldReconnect: Bool = false
 
     public let reconnectionStrategy: RetryStrategy
     private var retryHandler: RetryHandler?
+
+
+    public func setConnectionRequest(header: String, value: String?) {
+        self.socket.request.setValue(value, forHTTPHeaderField: header)
+    }
 
     public func connect() {
         self.retryHandler = nil
@@ -32,11 +43,18 @@ public class Cable: WebSocketDelegate {
     }
 
     public func disconnect() {
+        self.shouldReconnect = false
         self.manuallyDisconnected = true
         self.socket.disconnect()
     }
 
-    private func reconnect() {
+    public func reconnect() {
+        self.shouldReconnect = true
+        self.manuallyDisconnected = true
+        self.socket.disconnect()
+    }
+
+    private func retryConnect() {
         let retryHandler: RetryHandler
         if let handler = self.retryHandler {
             retryHandler = handler
@@ -140,6 +158,7 @@ public class Cable: WebSocketDelegate {
 
     public func websocketDidConnect(socket: WebSocketClient) {
         self.manuallyDisconnected = false
+        self.shouldReconnect = false
         self.retryHandler = nil
 
         self.subscribeWaitingChannels()
@@ -164,8 +183,8 @@ public class Cable: WebSocketDelegate {
             }
         }
 
-        if attemptReconnect && !self.manuallyDisconnected {
-            self.reconnect()
+        if self.shouldReconnect || (attemptReconnect && !self.manuallyDisconnected) {
+            self.retryConnect()
         }
     }
 
