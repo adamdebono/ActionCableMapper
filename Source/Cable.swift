@@ -8,6 +8,8 @@ public class Cable: WebSocketDelegate {
         return self.socket.currentURL
     }
 
+    public weak var delegate: CableDelegate? = nil
+
     public convenience init(url: URL, reconnectionStrategy: RetryStrategy = .default) {
         let request = URLRequest(url: url)
         self.init(request: request, reconnectionStrategy: reconnectionStrategy)
@@ -163,10 +165,13 @@ public class Cable: WebSocketDelegate {
 
         self.subscribeWaitingChannels()
         self.transmitWaitingActions()
+
+        self.delegate?.cableDidConnect(cable: self)
     }
 
     public func websocketDidDisconnect(socket: WebSocketClient, error: Error?) {
         self.disconnectSubscribedChannels()
+        print(error)
 
         var attemptReconnect = true
 
@@ -186,6 +191,8 @@ public class Cable: WebSocketDelegate {
         if self.shouldReconnect || (attemptReconnect && !self.manuallyDisconnected) {
             self.retryConnect()
         }
+
+        self.delegate?.cableDidDisconnect(cable: self)
     }
 
     public func websocketDidReceiveMessage(socket: WebSocketClient, text: String) {
@@ -230,4 +237,9 @@ public class Cable: WebSocketDelegate {
     public func websocketDidReceiveData(socket: WebSocketClient, data: Data) {
         print(data)
     }
+}
+
+public protocol CableDelegate: AnyObject {
+    func cableDidConnect(cable: Cable)
+    func cableDidDisconnect(cable: Cable)
 }
