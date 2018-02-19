@@ -129,7 +129,6 @@ public class Cable: WebSocketDelegate {
         guard self.isConnected else { throw TransmitError.notConnected }
 
         let payload = try JSONEncoder().encodeString(action.payload)
-        print(payload)
         self.socket.write(string: payload)
     }
 
@@ -171,7 +170,6 @@ public class Cable: WebSocketDelegate {
 
     public func websocketDidDisconnect(socket: WebSocketClient, error: Error?) {
         self.disconnectSubscribedChannels()
-        print(error)
 
         var attemptReconnect = true
 
@@ -196,10 +194,7 @@ public class Cable: WebSocketDelegate {
     }
 
     public func websocketDidReceiveMessage(socket: WebSocketClient, text: String) {
-        print(text)
-
         guard let message = try? decodeMessage(text) else { return }
-        print(message)
 
         switch message.kind {
         case .welcome, .ping:
@@ -234,9 +229,7 @@ public class Cable: WebSocketDelegate {
         }
     }
 
-    public func websocketDidReceiveData(socket: WebSocketClient, data: Data) {
-        print(data)
-    }
+    public func websocketDidReceiveData(socket: WebSocketClient, data: Data) {}
 }
 
 public protocol CableDelegate: AnyObject {
