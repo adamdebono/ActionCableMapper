@@ -76,8 +76,12 @@ public class Cable: WebSocketDelegate {
     private var pendingChannels: [Channel] = []
     private var waitingChannels: [Channel] = []
 
+    internal func isSubscribed(to channel: Channel) -> Bool {
+        return self.subscribedChannels.contains(where: { channel == $0 })
+    }
+
     internal func subscribe(to channel: Channel) {
-        guard !self.subscribedChannels.contains(where: { channel == $0 }) else { return }
+        guard !self.isSubscribed(to: channel) else { return }
         guard !self.pendingChannels.contains(where: { channel == $0 }) else { return }
         guard !self.waitingChannels.contains(where: { channel == $0 }) else { return }
 

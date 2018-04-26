@@ -20,7 +20,7 @@ internal struct MessageAction: Action {
     let channel: Channel
 
     var isReadyToSend: Bool {
-        return channel.isConnected
+        return channel.isConnected && channel.isSubscribed
     }
 
     internal init(channel: Channel, action: String, data: DataPayload) throws {

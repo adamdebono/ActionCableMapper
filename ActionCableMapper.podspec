@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "ActionCableMapper"
-  s.version      = "0.1.0"
+  s.version      = "0.1.1"
   s.summary      = "A framework to map rails ActionCable channels into swift objects"
   s.homepage     = "http://github.com/adamdebono/ActionCableMapper"
   s.license      = { :type => "MIT", :file => "LICENSE" }
@@ -11,8 +11,8 @@ Pod::Spec.new do |s|
   s.watchos.deployment_target = "3.0"
   s.tvos.deployment_target = "10.0"
 
-  s.source       = { :git => "https://github.com/adamdebono/ActionCableMapper.git", :tag => s.version }
+  s.source        = { :git => "https://github.com/adamdebono/ActionCableMapper.git", :tag => s.version }
   s.source_files  = "Source/*.swift"
 
-  s.dependency "Starscream", "~> 3.0.4"
+  s.dependency "Starscream", "~> 3.0.5"
 end

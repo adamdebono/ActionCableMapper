@@ -42,6 +42,13 @@ extension Channel {
         self.cable = nil
     }
 
+    var isSubscribed: Bool {
+        guard let cable = self.cable else { return false }
+        guard cable.isConnected else { return false }
+
+        return cable.isSubscribed(to: self)
+    }
+
     // MARK: - Receiving
 
     // MARK: - Sending
