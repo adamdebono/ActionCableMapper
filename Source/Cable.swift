@@ -85,7 +85,7 @@ public class Cable: WebSocketDelegate {
         guard !self.pendingChannels.contains(where: { channel == $0 }) else { return }
         guard !self.waitingChannels.contains(where: { channel == $0 }) else { return }
 
-        guard self.isConnected else {
+        guard self.isConnected && !self.shouldReconnect else {
             self.waitingChannels.append(channel)
             return
         }
@@ -137,7 +137,7 @@ public class Cable: WebSocketDelegate {
     }
 
     internal func transmitWhenConnected(_ action: Action) {
-        if self.isConnected && action.isReadyToSend {
+        if self.isConnected && action.isReadyToSend && !self.shouldReconnect {
             try? self.transmit(action)
         } else {
             self.waitingActions.append(action)

@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "ActionCableMapper"
-  s.version      = "0.1.1"
+  s.version      = "0.1.2"
   s.summary      = "A framework to map rails ActionCable channels into swift objects"
   s.homepage     = "http://github.com/adamdebono/ActionCableMapper"
   s.license      = { :type => "MIT", :file => "LICENSE" }
