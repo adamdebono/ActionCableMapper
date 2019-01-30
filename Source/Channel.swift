@@ -6,7 +6,7 @@ public protocol Channel: AnyObject {
     var name: String { get }
     var identifier: Identifier? { get }
 
-    weak var cable: Cable? { get set }
+    var cable: Cable? { get set }
 
     func didConnect()
     func didDisconnect()
