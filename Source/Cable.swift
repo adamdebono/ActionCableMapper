@@ -97,7 +97,7 @@ public class Cable: WebSocketDelegate {
     }
 
     internal func unsubscribe(from channel: Channel) {
-        guard let index = self.subscribedChannels.index(where: { channel == $0 }) else { return }
+        guard let index = self.subscribedChannels.firstIndex(where: { channel == $0 }) else { return }
 
         let action = UnsubscribeAction(channel: channel)
         try? self.transmit(action)
@@ -209,7 +209,7 @@ public class Cable: WebSocketDelegate {
             break
         case .confirmSubscription:
             guard let message = message as? ConfirmSubscriptionMessage else { return }
-            guard let index = self.pendingChannels.index(where: { $0 == (message.channelName, message.channelIdentifier) }) else { return }
+            guard let index = self.pendingChannels.firstIndex(where: { $0 == (message.channelName, message.channelIdentifier) }) else { return }
             let channel = self.pendingChannels[index]
             self.pendingChannels.remove(at: index)
             self.subscribedChannels.append(channel)
@@ -225,7 +225,7 @@ public class Cable: WebSocketDelegate {
             channel.received(message: message)
         case .rejectSubscription:
             guard let message = message as? RejectSubscriptionMessage else { return }
-            guard let index = self.pendingChannels.index(where: { $0 == (message.channelName, message.channelIdentifier) }) else { return }
+            guard let index = self.pendingChannels.firstIndex(where: { $0 == (message.channelName, message.channelIdentifier) }) else { return }
             let channel = self.pendingChannels[index]
             self.pendingChannels.remove(at: index)
 

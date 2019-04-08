@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "ActionCableMapper"
-  s.version      = "0.1.2"
+  s.version      = "0.1.3"
   s.summary      = "A framework to map rails ActionCable channels into swift objects"
   s.homepage     = "http://github.com/adamdebono/ActionCableMapper"
   s.license      = { :type => "MIT", :file => "LICENSE" }
@@ -14,5 +14,5 @@ Pod::Spec.new do |s|
   s.source        = { :git => "https://github.com/adamdebono/ActionCableMapper.git", :tag => s.version }
   s.source_files  = "Source/*.swift"
 
-  s.dependency "Starscream", "~> 3.0.5"
+  s.dependency "Starscream", "~> 3.1.0"
 end
